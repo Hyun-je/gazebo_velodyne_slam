@@ -1,0 +1,56 @@
+<launch>
+  <arg name="model" default="burger" doc="model type [burger, waffle, waffle_pi]"/>
+  <arg name="x_pos" default="-2.0"/>
+  <arg name="y_pos" default="-0.5"/>
+  <arg name="z_pos" default="0.0"/>
+
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find gazebo_velodyne_slam)/mmca.world"/>
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="gui" value="false"/>
+    <arg name="headless" value="false"/>
+    <arg name="debug" value="false"/>
+  </include>
+
+  <param name="robot_description" command="$(find xacro)/xacro --inorder $(find turtlebot3_description)/urdf/turtlebot3_$(arg model).urdf.xacro" />
+
+
+
+  <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+    <param name="publish_frequency" type="double" value="50.0" />
+  </node>
+
+
+  <!-- Run Gazebo (Simulation)-->
+  <node pkg="gazebo_ros" type="spawn_model" name="spawn_urdf"
+    args="-urdf -model turtlebot3_$(arg model) -x $(arg x_pos) -y $(arg y_pos) -z $(arg z_pos) -param robot_description">
+  </node>
+
+
+  <!-- Run Cartographer (SLAM) -->
+  <node name="cartographer_node" pkg="cartographer_ros" type="cartographer_node"
+    args="-configuration_directory $(find gazebo_velodyne_slam) -configuration_basename cartographer_velodyne.lua"
+    output="screen">
+    <remap from="points2" to="/velodyne_points" />
+  </node>
+
+  <node name="cartographer_occupancy_grid_node" pkg="cartographer_ros" type="cartographer_occupancy_grid_node"
+      args="-resolution 0.05">
+  </node>
+
+
+  <!-- Run Octomap -->
+	<node pkg="octomap_server" type="octomap_server_node" name="octomap_server">
+		<param name="resolution" value="0.1" />
+		<param name="frame_id" type="string" value="odom" />
+		<param name="sensor_model/max_range" value="50.0" />
+
+		<remap from="cloud_in" to="/velodyne_points" />
+	</node>
+
+
+  <!-- Run Rviz (Display) -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find gazebo_velodyne_slam)/cartographer.rviz"/>
+
+</launch>
