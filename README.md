@@ -5,6 +5,7 @@
 ``` sh
 # install octomap ros
 sudo apt-get install ros-melodic-octomap
+sudo apt-get install ros-melodic-octomap-server
 
 # clone turtlebot3
 
